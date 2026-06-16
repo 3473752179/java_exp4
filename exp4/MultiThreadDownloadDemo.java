@@ -1,4 +1,5 @@
 import java.io.IOException;
+import java.io.InputStream;
 import java.io.RandomAccessFile;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -54,7 +55,7 @@ public class MultiThreadDownloadDemo {
             System.out.println("--------------------------------");
             System.out.println("All download threads finished.");
 
-            if (Files.mismatch(sourcePath, targetPath) == -1) {
+            if (areFilesIdentical(sourcePath, targetPath)) {
                 System.out.println("Verification passed: files are identical.");
             } else {
                 System.out.println("Verification failed: files are different.");
@@ -82,6 +83,37 @@ public class MultiThreadDownloadDemo {
     private static void prepareTargetFile(Path targetPath, long fileSize) throws IOException {
         try (RandomAccessFile targetFile = new RandomAccessFile(targetPath.toFile(), "rw")) {
             targetFile.setLength(fileSize);
+        }
+    }
+
+    private static boolean areFilesIdentical(Path sourcePath, Path targetPath) throws IOException {
+        if (Files.size(sourcePath) != Files.size(targetPath)) {
+            return false;
+        }
+
+        try (InputStream sourceStream = Files.newInputStream(sourcePath);
+             InputStream targetStream = Files.newInputStream(targetPath)) {
+            byte[] sourceBuffer = new byte[BUFFER_SIZE];
+            byte[] targetBuffer = new byte[BUFFER_SIZE];
+
+            while (true) {
+                int sourceRead = sourceStream.read(sourceBuffer);
+                int targetRead = targetStream.read(targetBuffer);
+
+                if (sourceRead != targetRead) {
+                    return false;
+                }
+
+                if (sourceRead == -1) {
+                    return true;
+                }
+
+                for (int i = 0; i < sourceRead; i++) {
+                    if (sourceBuffer[i] != targetBuffer[i]) {
+                        return false;
+                    }
+                }
+            }
         }
     }
 
